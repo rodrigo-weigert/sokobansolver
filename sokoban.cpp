@@ -13,8 +13,7 @@
 
 using namespace std;
 
-
-const int dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+const short dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
 const char dirname[4] = {'U', 'R', 'D', 'L'};
 
 char grid[MAX_LEVEL_SIZE][MAX_LEVEL_SIZE+2];
@@ -23,11 +22,11 @@ int	nboxes;
 
 struct state
 {
-	int px, py;
-	int boxes[MAX_BOXES_PER_LEVEL];
+	short px, py;
+	short boxes[MAX_BOXES_PER_LEVEL];
 };
 
-bool has_box(state& s, int x, int y)
+bool has_box(state& s, short x, short y)
 {
 	for (int i = 0; i < nboxes; i++)
 	{
@@ -56,9 +55,9 @@ struct state_cmp
 	}
 };
 
-bool valid(int x, int y)
+bool valid(short x, short y)
 {
-	if (x >= 0 and x < rows and y >= 0 < cols)
+	if (x >= 0 and x < rows and y >= 0 and y < cols)
 		return grid[x][y] != WALL;
 	else
 		return false;
@@ -66,15 +65,15 @@ bool valid(int x, int y)
 
 bool move(state& s, int d)
 {
-	int x = s.px + dir[d][0];
-	int y = s.py + dir[d][1];
+	short x = s.px + dir[d][0];
+	short y = s.py + dir[d][1];
 
 	if (valid(x, y))
 	{
 		if (has_box(s, x, y))
 		{
-			int bx = x + dir[d][0];
-			int by = y + dir[d][1];
+			short bx = x + dir[d][0];
+			short by = y + dir[d][1];
 
 			if (valid(bx, by) and !has_box(s, bx, by))
 			{
@@ -108,8 +107,8 @@ bool cleared(state& s)
 {
 	for (int i = 0; i < nboxes; i++)
 	{
-		int x = get_x(s.boxes[i]);
-		int y = get_y(s.boxes[i]);
+		short x = get_x(s.boxes[i]);
+		short y = get_y(s.boxes[i]);
 		if (grid[x][y] != GOAL and grid[x][y] != BOX_ON_GOAL and grid[x][y] != PLAYER_ON_GOAL)
 			return false;
 	}
@@ -188,8 +187,8 @@ int main()
 		{
 			if (grid[i][j] == PLAYER or grid[i][j] == PLAYER_ON_GOAL)
 			{
-				initial.px = i;
-				initial.py = j;
+				initial.px = (short)i;
+				initial.py = (short)j;
 			}
 			else if (grid[i][j] == BOX)
 				initial.boxes[nboxes++] = get_pos(i, j);
