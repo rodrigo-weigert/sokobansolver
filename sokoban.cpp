@@ -3,7 +3,7 @@
 #define get_x(pos) pos / cols
 #define get_y(pos) pos % cols
 #define MAX_BOXES_PER_LEVEL 20
-#define MAX_LEVEL_SIZE 512
+#define MAX_LEVEL_SIZE 256
 #define PLAYER '@'
 #define GOAL '.'
 #define BOX '$'
