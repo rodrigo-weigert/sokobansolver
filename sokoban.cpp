@@ -135,6 +135,7 @@ string bfs(state& initial)
 	queue<state> q;
 	state end;
 
+	m[initial] = initial;
 	q.push(initial);
 	while (!q.empty())
 	{
