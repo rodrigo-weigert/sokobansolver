@@ -1,9 +1,16 @@
 #include <bits/stdc++.h>
+
+/* Macros para converter uma posição na fase entre dois sistemas de coordenadas um mono e um bidimensonal */
+/* O uso da coordenada monodimensional serve para economizar memória e facilitar certas implementações */
 #define get_pos(x, y) (x * cols + y)
 #define get_x(pos) (pos / cols)
 #define get_y(pos) (pos % cols)
+
+
 #define MAX_BOXES_PER_LEVEL 20
 #define MAX_LEVEL_SIZE 256
+
+/* Caracteres utilizados na representação do nível */
 #define PLAYER '@'
 #define GOAL '.'
 #define BOX '$'
@@ -13,21 +20,26 @@
 
 using namespace std;
 
-const short oo = 0x3f3f;
-const short dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
-const char dirname[4] = {'U', 'R', 'D', 'L'};
-short goals[MAX_BOXES_PER_LEVEL];
+const short oo = 0x3f3f;										// Infinito
+const short dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};		// Vetores das direções do movimento do jogador (direção 0: cima, direção 1: direita...)
+const char dirname[4] = {'U', 'R', 'D', 'L'};					// Caracteres correspondendes às direções dos vetores acima
 
-char grid[MAX_LEVEL_SIZE][MAX_LEVEL_SIZE+2];
-int rows, cols;
-int	nboxes;
+short goals[MAX_BOXES_PER_LEVEL];								// Vetor com as coordenadas (monodimensionais) dos objetivos
+char grid[MAX_LEVEL_SIZE][MAX_LEVEL_SIZE+2];					// Representação do nível/tabuleiro/fase fonrecida na entrada
+int rows, cols;													// Dimensões do nível
+int	nboxes;														// Número de caixas (e de objetivos) do nível
 
+
+/* A struct state representa um estado do jogo. Este é totalmente determinado pela posição do jogador e de cada caixa */
 struct state
 {
-	short px, py;
+	short px, py;						//O uso de short permite economia significativa de memória, pois milhões de estados são armazenados
 	short boxes[MAX_BOXES_PER_LEVEL];
 };
 
+/* Este é o comparador de estados (dados dois estados a e b, retorna true se a é considerado "menor" que b). */
+/* Isto é utilizado para que estados possam ser inseridos em estruturas de árvores binárias de busca da STL do C++ (ex: std::map) */
+/* Tais estruturas são utilizadas pelas funções de busca (ex: para armazenar estados visitados e seus antecessores na BFS) */
 struct state_cmp
 {
 	bool operator() (const state& a, const state& b) const
@@ -47,11 +59,12 @@ struct state_cmp
 	}
 };
 
-struct anode		//É um nó da fila de prioridade a ser utilizada pelo A*
+//É um nó da fila de prioridade a ser utilizada pelo A*
+struct anode
 {
-	short cost;		// custo do caminho até agora
-	short est;		// estimativa de custo até o objetivo
-	state s;		// estado associado
+	short cost;		// Custo do caminho até agora
+	short est;		// Estimativa de custo até o objetivo
+	state s;		// Estado associado
 };
 
 struct anode_cmp
@@ -67,6 +80,7 @@ struct anode_cmp
 	}
 };
 
+/* Dado um estado s e uma posição (x,y), retorna true se e somente se o estado s contém uma caixa na posição (x,y) */
 bool has_box(state& s, short x, short y)
 {
 	for (int i = 0; i < nboxes; i++)
@@ -77,6 +91,7 @@ bool has_box(state& s, short x, short y)
 	return false;
 }
 
+/* Uma posição (x, y) é dita "válida" se ela não é uma parede e se está dentro dos limites do nível */
 bool valid(short x, short y)
 {
 	if (x >= 0 and x < rows and y >= 0 and y < cols)
@@ -85,6 +100,13 @@ bool valid(short x, short y)
 		return false;
 }
 
+/* Dado um estado s e uma direção d, retorna true se e somente se é possível o jogador realizar um movimento na direção d.*/
+/* Nesse caso, a função também altera s para representar o estado em que se chega ao realizar o movimento, movimentando uma caixa, se necessário. */
+/* Se não for possível realizar o movimento, retorna false e não altera s. */
+/* Um jogador numa posição (x,y) pode se mover na direção (dx, dy) se e somente se */
+/* (x + dx, y + dy) é uma posição válida e uma das seguintes condições é verdadeira: */
+/* 		- (x + dx, y + dy) não contém uma caixa */
+/* 		- (x + dx, y + dy) contém uma caixa e (x + 2*dx, y + 2*dy) é uma posição válida que não contém uma caixa */
 bool move(state& s, int d)
 {
 	short x = s.px + dir[d][0];
@@ -125,6 +147,8 @@ bool move(state& s, int d)
 		return false;
 }
 
+/* Dado um estado s, verifica se esse estado representa um nível finalizado.*/
+/* Um nível está finalizado se e somente se todas as caixas ocupam posições objetivo.*/
 bool cleared(state& s)
 {
 	for (int i = 0; i < nboxes; i++)
@@ -136,7 +160,8 @@ bool cleared(state& s)
 	}
 	return true;
 }
-
+/* Determina a igualdade entre estados. Dois estados são iguais se os valores de todos os seus componentes são iguais. */
+/* Esta função é utilizada para recuperar o caminho percorrido pelas funções de busca e portanto o passo a passo da solução do nível. */
 bool equal(const state& a, const state& b)
 {
 	if (a.px != b.px)
@@ -151,9 +176,10 @@ bool equal(const state& a, const state& b)
 	return true;
 }
 
+// BFS que busca pela solução do nível. Ao encontrar, retorna uma string que representa a sequencia de movimentos de tal solução */
 string bfs(state& initial)
 {
-	map<state, state, state_cmp> prev;
+	map<state, state, state_cmp> prev;	//Associa a cada estado s o estado que levou a BFS a s.
 	queue<state> q;
 	state end;
 
@@ -178,6 +204,8 @@ string bfs(state& initial)
 			}
 		}
 	}
+
+	/* Recuperação do caminho percorrido */
 	string path;
 	state cur = end;
 	while (!equal(cur, initial))
@@ -197,22 +225,10 @@ string bfs(state& initial)
 	return path;
 }
 
-short estimate(state& s) //Soma das menores distâncias (de Manhattan) entre cada caixa e um objetivo.
-{
-	short est = 0;
-	for (int i = 0; i < nboxes; i++)
-	{
-		short mindist = oo;
-		for (int j = 0; j < nboxes; j++)
-		{
-			mindist = min(mindist, (short)(abs(get_x(s.boxes[i]) - get_x(goals[j])) + abs(get_y(s.boxes[i]) - get_y(goals[j]))));
-		}
-		est += mindist;
-	}
-	return est;
-}
-
-short estimate2(state& s) //Soma das menores distancias (em numero real de movimentos) entre cada caixa e um objetivo
+// Função de estimação do custo até a solução a partir de um estado s.
+// Soma das menores distâncias (número de movimentos) entre cada caixa e um objetivo qualquer.
+// A soma é calculada com uma BFS de múltiplos vértices iniciais
+short estimate(state& s)
 {
 	queue<short> q;
 	short dist[MAX_LEVEL_SIZE][MAX_LEVEL_SIZE];
@@ -289,7 +305,7 @@ string astar(state& initial)
 				anode next_a;
 				next_a.s = next;
 				next_a.cost = dist[next] = cur.cost + 1;
-				next_a.est = estimate2(next);
+				next_a.est = estimate(next);
 				if (next_a.est < oo)
 				{
 					prev[next] = cur.s;
