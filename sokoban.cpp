@@ -409,6 +409,6 @@ int main(int argc, char* argv[])
 		astar(initial);
 	else
 		bfs(initial);
-	close(input_file);
+	fclose(input_file);
 	return 0;
 }
