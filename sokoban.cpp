@@ -1,7 +1,9 @@
 #include <bits/stdc++.h>
 
-/* Macros para converter uma posição na fase entre dois sistemas de coordenadas um mono e um bidimensonal */
-/* O uso da coordenada monodimensional serve para economizar memória e facilitar certas implementações */
+/* Macros para converter uma posição na fase entre dois
+sistemas de coordenadas um mono e um bidimensonal
+O uso da coordenada monodimensional serve para
+economizar memória e facilitar certas implementações */
 #define get_pos(x, y) (x * cols + y)
 #define get_x(pos) (pos / cols)
 #define get_y(pos) (pos % cols)
@@ -37,21 +39,24 @@ struct state
 	short boxes[MAX_BOXES_PER_LEVEL];
 };
 
-/* Este é o comparador de estados (dados dois estados a e b, retorna true se a é considerado "menor" que b). */
-/* Isto é utilizado para que estados possam ser inseridos em estruturas de árvores binárias de busca da STL do C++ (ex: std::map) */
-/* Tais estruturas são utilizadas pelas funções de busca (ex: para armazenar estados visitados e seus antecessores na BFS) */
+/* Este é o comparador de estados (dados dois estados a e b,
+retorna true se a é considerado "menor" que b).
+Isto é utilizado para que estados possam ser inseridos em
+estruturas de árvores binárias de busca da STL do C++ (ex: std::map).
+Tais estruturas são utilizadas pelas funções de busca
+(ex: para armazenar estados visitados e seus antecessores na BFS) */
 struct state_cmp
 {
 	bool operator() (const state& a, const state& b) const
 	{
 		if (a.px != b.px)
 			return a.px < b.px;
-		
+
 		if (a.py != b.py)
 			return a.py < b.py;
 
 		for (int i = 0; i < nboxes; i++)
-		{	
+		{
 			if (a.boxes[i] != b.boxes[i])
 				return a.boxes[i] < b.boxes[i];
 		}
@@ -70,7 +75,7 @@ struct anode
 struct anode_cmp
 {
 	bool operator() (const anode& a, const anode& b) const
-	{		
+	{
 		/* Um anode (nó que envelopa um estado) é considerado 'menor'
 		que outro se o valor de sua função heurística
 		(custo do passado + estimativa do futuro) tem valor maior
@@ -80,7 +85,8 @@ struct anode_cmp
 	}
 };
 
-/* Dado um estado s e uma posição (x,y), retorna true se e somente se o estado s contém uma caixa na posição (x,y) */
+/* Dado um estado s e uma posição (x,y), retorna true se e
+somente se o estado s contém uma caixa na posição (x,y) */
 bool has_box(state& s, short x, short y)
 {
 	for (int i = 0; i < nboxes; i++)
@@ -100,13 +106,15 @@ bool valid(short x, short y)
 		return false;
 }
 
-/* Dado um estado s e uma direção d, retorna true se e somente se é possível o jogador realizar um movimento na direção d.*/
-/* Nesse caso, a função também altera s para representar o estado em que se chega ao realizar o movimento, movimentando uma caixa, se necessário. */
-/* Se não for possível realizar o movimento, retorna false e não altera s. */
-/* Um jogador numa posição (x,y) pode se mover na direção (dx, dy) se e somente se */
-/* (x + dx, y + dy) é uma posição válida e uma das seguintes condições é verdadeira: */
-/* 		- (x + dx, y + dy) não contém uma caixa */
-/* 		- (x + dx, y + dy) contém uma caixa e (x + 2*dx, y + 2*dy) é uma posição válida que não contém uma caixa */
+/* Dado um estado s e uma direção d, retorna true se e somente
+se é possível o jogador realizar um movimento na direção d.
+Nesse caso, a função também altera s para representar o estado em que
+se chega ao realizar o movimento, movimentando uma caixa, se necessário.
+Se não for possível realizar o movimento, retorna false e não altera s.
+Um jogador numa posição (x,y) pode se mover na direção (dx, dy) se e somente se
+(x + dx, y + dy) é uma posição válida e uma das seguintes condições é verdadeira:
+ 			- (x + dx, y + dy) não contém uma caixa
+ 			- (x + dx, y + dy) contém uma caixa e (x + 2*dx, y + 2*dy) é uma posição válida que não contém uma caixa */
 bool move(state& s, int d)
 {
 	short x = s.px + dir[d][0];
@@ -147,8 +155,8 @@ bool move(state& s, int d)
 		return false;
 }
 
-/* Dado um estado s, verifica se esse estado representa um nível finalizado.*/
-/* Um nível está finalizado se e somente se todas as caixas ocupam posições objetivo.*/
+/* Dado um estado s, verifica se esse estado representa um nível finalizado.
+ 	 Um nível está finalizado se e somente se todas as caixas ocupam posições objetivo.*/
 bool cleared(state& s)
 {
 	for (int i = 0; i < nboxes; i++)
@@ -160,8 +168,10 @@ bool cleared(state& s)
 	}
 	return true;
 }
-/* Determina a igualdade entre estados. Dois estados são iguais se os valores de todos os seus componentes são iguais. */
-/* Esta função é utilizada para recuperar o caminho percorrido pelas funções de busca e portanto o passo a passo da solução do nível. */
+/* Determina a igualdade entre estados. Dois estados são iguais
+ se os valores de todos os seus componentes são iguais.
+Esta função é utilizada para recuperar o caminho percorrido pelas
+funções de busca e portanto o passo a passo da solução do nível. */
 bool equal(const state& a, const state& b)
 {
 	if (a.px != b.px)
@@ -176,12 +186,13 @@ bool equal(const state& a, const state& b)
 	return true;
 }
 
-// BFS que busca pela solução do nível. Ao encontrar, retorna uma string que representa a sequencia de movimentos de tal solução */
+/* BFS que busca pela solução do nível. Ao encontrar, retorna uma
+string que representa a sequencia de movimentos de tal solução */
 string bfs(state& initial)
 {
 	map<state, state, state_cmp> prev;	//Associa a cada estado s o estado que levou a BFS a s.
-	queue<state> q;
-	state end;
+	queue<state> q;											//Pilha de estados percorridos
+	state end; 													//Estado final
 
 	prev[initial] = initial;
 	q.push(initial);
@@ -269,11 +280,15 @@ short estimate(state& s)
 	return est;
 }
 
+/*Realiza a busca das solucoes utilizando a heuristica A* e retorna a string com a solucao.
+Muito similiar a BFS, porem utiliza a estrutura da fila de prioridades,
+de forma que não percorre todos os caminhos possiveis, apenas aqueles
+que forem atingir o objetivo com menos movimentos. */
 string astar(state& initial)
 {
-	map<state, state, state_cmp> prev;
-	priority_queue<anode, vector<anode>, anode_cmp> q;
-	map<state, short, state_cmp> dist;
+	map<state, state, state_cmp> prev; 									//Estrutura que armazena o caminho percorrido
+	priority_queue<anode, vector<anode>, anode_cmp> q;	//Fila de prioridades dos proximos caminhos a percorrer
+	map<state, short, state_cmp> dist;									//Estrutura que armazena as distancias calculadas
 	state end;
 	anode initial_a;
 
