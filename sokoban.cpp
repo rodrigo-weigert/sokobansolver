@@ -188,17 +188,20 @@ bool equal(const state& a, const state& b)
 
 /* BFS que busca pela solução do nível. Ao encontrar, retorna uma
 string que representa a sequencia de movimentos de tal solução */
-string bfs(state& initial)
+void bfs(state& initial)
 {
-	map<state, state, state_cmp> prev;	//Associa a cada estado s o estado que levou a BFS a s.
-	queue<state> q;											//Pilha de estados percorridos
-	state end; 													//Estado final
+	map<state, state, state_cmp> prev;			//Associa a cada estado s o estado que levou a BFS a s.
+	queue<state> q;								//Fila de estados a percorrer
+	state end; 									//Armazenará o estado final atigindo
+	clock_t t = clock();						//Para medição de tempo
+	int expl_count = 0;							//Contador de estados explorados
 
 	prev[initial] = initial;
 	q.push(initial);
 	while (!q.empty())
 	{
 		state cur = q.front();
+		expl_count++;
 		q.pop();
 		if (cleared(cur))
 		{
@@ -215,6 +218,7 @@ string bfs(state& initial)
 			}
 		}
 	}
+	t = clock() - t;
 
 	/* Recuperação do caminho percorrido */
 	string path;
@@ -233,7 +237,8 @@ string bfs(state& initial)
 		cur = prv;
 	}
 	reverse(path.begin(), path.end());
-	return path;
+	printf("Search concluded after %lf s, %d states explored.\n", 1.0*t / CLOCKS_PER_SEC, expl_count);
+	printf("Solution: %s (%d moves)\n", path.c_str(), (int)path.size());
 }
 
 // Função de estimação do custo até a solução a partir de um estado s.
@@ -281,16 +286,17 @@ short estimate(state& s)
 }
 
 /*Realiza a busca das solucoes utilizando a heuristica A* e retorna a string com a solucao.
-Muito similiar a BFS, porem utiliza a estrutura da fila de prioridades,
-de forma que não percorre todos os caminhos possiveis, apenas aqueles
-que forem atingir o objetivo com menos movimentos. */
-string astar(state& initial)
+Muito similiar a BFS, porem utiliza a estrutura da fila de prioridades ordenada usando uma heurística,
+de forma a tentar visitar estados numa ordem que leve à solução mais rapidamente */
+void astar(state& initial)
 {
-	map<state, state, state_cmp> prev; 									//Estrutura que armazena o caminho percorrido
-	priority_queue<anode, vector<anode>, anode_cmp> q;	//Fila de prioridades dos proximos caminhos a percorrer
-	map<state, short, state_cmp> dist;									//Estrutura que armazena as distancias calculadas
-	state end;
-	anode initial_a;
+	map<state, state, state_cmp> prev; 								//Associa a cada estado s o estado que levou o A* a explorar s.
+	priority_queue<anode, vector<anode>, anode_cmp> q;				//Fila de prioridades (conterá os próximos estados a explorar)
+	map<state, short, state_cmp> dist;								//Estrutura que armazena as distancias calculadas para os estados visitados
+	state end;														//Armazenará o estado final
+	anode initial_a;												//Envelope para o estado inicial para ser inserido na fila de prioridade
+	clock_t t = clock();											//Para medição de tempo
+	int expl_count = 0;												//Contador de estados explorados
 
 	initial_a.cost = 0;
 	initial_a.est = estimate(initial);
@@ -302,6 +308,7 @@ string astar(state& initial)
 	while (!q.empty())
 	{
 		anode cur = q.top();
+		expl_count++;
 		q.pop();
 
 		if (cur.cost > dist[cur.s])
@@ -329,6 +336,8 @@ string astar(state& initial)
 			}
 		}
 	}
+	t = clock() - t;
+
 	/* A parte abaixo (reconstrução do caminho) é identica a da BFS */
 	string path;
 	state cur = end;
@@ -346,19 +355,43 @@ string astar(state& initial)
 		cur = prv;
 	}
 	reverse(path.begin(), path.end());
-	return path;
+	printf("Heuristic search concluded after %lf s, %d states explored.\n", 1.0*t / CLOCKS_PER_SEC, expl_count);
+	printf("Solution: %s (%d moves)\n", path.c_str(), (int)path.size());
+
 }
 
-int main()
+int main(int argc, char* argv[])
 {
 	state initial;
-	scanf("%d %d", &rows, &cols);
-	getchar();
-
 	int goalcount = 0;
+	bool heuristic = false;
+	FILE* input_file;
+
+	if (argc == 1)
+	{
+		printf("usage:\t%s levelfile [--heuristic]\n", argv[0]);
+		return 0;
+	}
+
+	input_file = fopen(argv[1], "r");
+	if (input_file == NULL)
+	{
+		printf("Error: file not found.\n");
+		return 0;
+	}
+
+	if (argc == 3 and !strcmp(argv[2], "--heuristic"))
+		heuristic = true;
+
+	rows = cols = 0;
+	while (fgets(grid[rows], MAX_LEVEL_SIZE, input_file) == grid[rows])
+	{
+		int i = rows++;
+		cols = max(cols, (int)strlen(grid[i])-1);	
+	}
+	
 	for (int i = 0; i < rows; i++)
 	{
-		fgets(grid[i], MAX_LEVEL_SIZE, stdin);
 		for (int j = 0; j < cols; j++)
 		{
 			if (grid[i][j] == PLAYER or grid[i][j] == PLAYER_ON_GOAL)
@@ -372,21 +405,10 @@ int main()
 				goals[goalcount++] = get_pos(i, j);
 		}
 	}
-	string bfs_ans, astar_ans;
-	double bfs_time, astar_time;
-	int s, t;
-
-	s = clock();
-	astar_ans = astar(initial);
-	t = clock();
-	astar_time = (1.0*(t-s)) / CLOCKS_PER_SEC;
-	printf("A* (%lf s):\t%s\n", astar_time, astar_ans.c_str());
-
-	s = clock();
-	bfs_ans = bfs(initial);
-	t = clock();
-	bfs_time = (1.0*(t-s)) / CLOCKS_PER_SEC;
-	printf("BFS: (%lf s):\t%s\n", bfs_time, bfs_ans.c_str());
-
+	if (heuristic)
+		astar(initial);
+	else
+		bfs(initial);
+	close(input_file);
 	return 0;
 }
