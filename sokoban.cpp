@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 #define get_pos(x, y) (x * cols + y)
-#define get_x(pos) pos / cols
-#define get_y(pos) pos % cols
+#define get_x(pos) (pos / cols)
+#define get_y(pos) (pos % cols)
 #define MAX_BOXES_PER_LEVEL 20
 #define MAX_LEVEL_SIZE 256
 #define PLAYER '@'
@@ -13,8 +13,10 @@
 
 using namespace std;
 
+const short oo = 0x3f3f;
 const short dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
 const char dirname[4] = {'U', 'R', 'D', 'L'};
+short goals[MAX_BOXES_PER_LEVEL];
 
 char grid[MAX_LEVEL_SIZE][MAX_LEVEL_SIZE+2];
 int rows, cols;
@@ -195,12 +197,60 @@ string bfs(state& initial)
 	return path;
 }
 
-short estimate(state& s)
+short estimate(state& s) //Soma das menores distâncias (de Manhattan) entre cada caixa e um objetivo.
 {
-	/* Será a função heurística de estimativa
-	para número de movimentos faltando para o objetivo 
-	dado um estado. */
-	return 0;
+	short est = 0;
+	for (int i = 0; i < nboxes; i++)
+	{
+		short mindist = oo;
+		for (int j = 0; j < nboxes; j++)
+		{
+			mindist = min(mindist, (short)(abs(get_x(s.boxes[i]) - get_x(goals[j])) + abs(get_y(s.boxes[i]) - get_y(goals[j]))));
+		}
+		est += mindist;
+	}
+	return est;
+}
+
+short estimate2(state& s) //Soma das menores distancias (em numero real de movimentos) entre cada caixa e um objetivo
+{
+	queue<short> q;
+	short dist[MAX_LEVEL_SIZE][MAX_LEVEL_SIZE];
+
+	memset(dist, -1, sizeof(dist));
+
+	for (int i = 0; i < nboxes; i++)
+	{
+		dist[get_x(goals[i])][get_y(goals[i])] = 0;
+		q.push(goals[i]);
+	}
+
+	while (!q.empty())
+	{
+		short x = get_x(q.front());
+		short y = get_y(q.front());
+		q.pop();
+
+		for (int d = 0; d < 4; d++)
+		{
+			short next_x = x + dir[d][0];
+			short next_y = y + dir[d][1];
+
+			if (valid(next_x, next_y) and valid(next_x + dir[d][0], next_y + dir[d][1]) and dist[next_x][next_y] == -1)
+			{
+				dist[next_x][next_y] = 1 + dist[x][y];
+				q.push(get_pos(next_x, next_y));
+			}
+		}
+	}
+	short est = 0;
+	for (int i = 0; i < nboxes; i++)
+	{
+		if (dist[get_x(s.boxes[i])][get_y(s.boxes[i])] == -1)
+			return oo;
+		est += dist[get_x(s.boxes[i])][get_y(s.boxes[i])];
+	}
+	return est;
 }
 
 string astar(state& initial)
@@ -239,9 +289,12 @@ string astar(state& initial)
 				anode next_a;
 				next_a.s = next;
 				next_a.cost = dist[next] = cur.cost + 1;
-				next_a.est = estimate(next);
-				prev[next] = cur.s;
-				q.push(next_a);
+				next_a.est = estimate2(next);
+				if (next_a.est < oo)
+				{
+					prev[next] = cur.s;
+					q.push(next_a);
+				}
 			}
 		}
 	}
@@ -271,6 +324,7 @@ int main()
 	scanf("%d %d", &rows, &cols);
 	getchar();
 
+	int goalcount = 0;
 	for (int i = 0; i < rows; i++)
 	{
 		fgets(grid[i], MAX_LEVEL_SIZE, stdin);
@@ -281,11 +335,27 @@ int main()
 				initial.px = (short)i;
 				initial.py = (short)j;
 			}
-			else if (grid[i][j] == BOX)
+			if (grid[i][j] == BOX or grid[i][j] == BOX_ON_GOAL)
 				initial.boxes[nboxes++] = get_pos(i, j);
+			if (grid[i][j] == GOAL or grid[i][j] == BOX_ON_GOAL or grid[i][j] == PLAYER_ON_GOAL)
+				goals[goalcount++] = get_pos(i, j);
 		}
 	}
-	printf("BFS:\t%s\n", bfs(initial).c_str());
-	printf("A*:\t%s\n", astar(initial).c_str());
+	string bfs_ans, astar_ans;
+	double bfs_time, astar_time;
+	int s, t;
+
+	s = clock();
+	astar_ans = astar(initial);
+	t = clock();
+	astar_time = (1.0*(t-s)) / CLOCKS_PER_SEC;
+	printf("A* (%lf s):\t%s\n", astar_time, astar_ans.c_str());
+
+	s = clock();
+	bfs_ans = bfs(initial);
+	t = clock();
+	bfs_time = (1.0*(t-s)) / CLOCKS_PER_SEC;
+	printf("BFS: (%lf s):\t%s\n", bfs_time, bfs_ans.c_str());
+
 	return 0;
 }
